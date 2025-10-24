@@ -14,172 +14,256 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 from ..agents.readonly_context import ReadonlyContext
-from .skill_manager import SkillManager
+from .skills_shell_tool import SkillsShellTool
 
 
-def generate_skills_system_prompt(
-    skill_manager: SkillManager, readonly_context: Optional[ReadonlyContext] = None
+def generate_shell_skills_system_prompt(
+    skills_directory: str | Path, readonly_context: Optional[ReadonlyContext] = None
 ) -> str:
-    """Generate a comprehensive system prompt for agents to use skills effectively.
+    """Generate a comprehensive system prompt for shell-based skills usage.
 
     Args:
-      skill_manager: The skill manager containing loaded skills.
+      skills_directory: Path to the skills directory.
       readonly_context: Optional context for customizing the prompt.
 
     Returns:
-      System prompt text for agents.
+      System prompt text for shell-based skills usage.
     """
-    skills_summary = skill_manager.get_skill_metadata_summary()
+    skills_dir = Path(skills_directory)
+    shell_tool = SkillsShellTool(skills_directory)
+    skills_context = shell_tool.get_skills_context()
 
-    prompt = f"""# Skills System
+    prompt = f"""# Skills System - Shell Access
 
-You have access to specialized skills that extend your capabilities for specific tasks. Skills contain expert knowledge, instructions, and executable scripts that help you perform complex operations accurately and efficiently.
+You have access to specialized skills through shell commands. Skills are organized folders containing expert knowledge, instructions, and executable scripts that help you perform complex tasks accurately and efficiently.
 
-## How Skills Work
+## Skills Location
 
-Skills follow a **progressive disclosure** pattern:
-1. **Discovery**: You can see all available skills and their descriptions
-2. **Loading**: You can load full skill content when relevant to the user's task
-3. **Deep Dive**: You can load additional files and execute scripts as needed
+{skills_context}
 
-## Available Skills
+## Shell Tool Usage
 
-{skills_summary}
+You have a `shell` tool that executes commands in the skills directory context. Use standard shell commands to interact with skills:
 
-## Skill Tools Available
+### Discovery Commands
 
-You have these tools to work with skills:
+**List Available Skills:**
+```
+shell("ls skills/")
+```
+Shows all available skill directories.
 
-### 1. `list_available_skills()`
-- Lists all skills with their descriptions
-- Use this to discover what specialized capabilities you have
-- Call this when users ask about your capabilities or when you need to find relevant skills
+**View Skill Metadata:**
+```
+shell("head -n 20 skills/SKILL_NAME/SKILL.md")
+```
+Shows skill name, description, and beginning of instructions.
 
-### 2. `load_skill_content(skill_name)`
-- Loads the complete instructions and guidance for a specific skill
-- Use this when you determine a skill is relevant to the user's request
-- The skill content will provide detailed instructions on how to approach the task
+**Quick Skill Overview:**
+```
+shell("grep -A 5 'description:' skills/*/SKILL.md")
+```
+Shows descriptions of all skills at once.
 
-### 3. `load_skill_file(skill_name, file_path)`
-- Loads additional reference files from a skill directory
-- Use this when skill instructions reference specific files (e.g., "see reference.md")
-- Common files include: reference.md, examples.md, troubleshooting.md
+### Content Loading Commands
 
-### 4. `execute_skill_script(skill_name, script_name)`
-- Executes Python scripts bundled with skills for deterministic operations
-- Use this for data processing, file manipulation, or complex calculations
-- Scripts are executed securely using ADK's code execution framework
+**Load Complete Skill Content:**
+```
+shell("cat skills/SKILL_NAME/SKILL.md")
+```
+Loads the full skill instructions and guidance.
 
-### 5. `list_skill_files(skill_name)`
-- Shows what additional files are available in a skill
-- Use this to explore what additional context is available
+**Load Additional Files:**
+```
+shell("cat skills/SKILL_NAME/reference.md")
+shell("cat skills/SKILL_NAME/forms.md")
+```
+Loads additional context files referenced in the main skill.
 
-You MAY have additional tools available to you, so please use them when appropriate.
+**Preview File Content:**
+```
+shell("head -n 10 skills/SKILL_NAME/reference.md")
+```
+Preview the beginning of a file before loading completely.
 
-## Best Practices for Using Skills
+### Script and File Discovery
 
-### 1. **Progressive Approach**
-- Start with `list_available_skills()` when unsure what capabilities you have
-- Load skill content only when relevant to the user's specific request
-- Load additional files only when the main skill content references them
+**List All Files in Skill:**
+```
+shell("find skills/SKILL_NAME -type f")
+```
+Shows all files available in a skill directory.
 
-### 2. **Skill Selection**
-- Choose skills based on the user's task domain (PDF processing, data analysis, etc.)
-- Read skill descriptions carefully to ensure relevance
-- Don't load skills unnecessarily - be selective
+**List Python Scripts:**
+```
+shell("find skills/SKILL_NAME -name '*.py'")
+```
+Shows executable Python scripts in a skill.
 
-### 3. **Script Execution**
-- Use scripts for deterministic operations like data processing or file manipulation
-- Scripts are more reliable than generating code for complex operations
-- Check available scripts with `list_skill_scripts()` before execution
+**Detailed File Listing:**
+```
+shell("ls -la skills/SKILL_NAME/")
+```
+Shows files with permissions, sizes, and modification dates.
 
-### 4. **Context Management**
-- Skills provide expert-level instructions - follow them carefully
-- Combine skill guidance with your general knowledge appropriately
-- Reference skill instructions when explaining your approach to users
+### Script Execution Commands
 
-### 5. **Error Handling**
-- If a skill fails to load, explain the issue and suggest alternatives
-- If scripts fail, check the error message and try alternative approaches
-- Validate that skills exist before attempting to load them
+**Execute Skill Script:**
+```
+shell("cd skills/SKILL_NAME && python scripts/SCRIPT_NAME.py")
+```
+Executes a Python script from its skill directory with proper context.
 
-## Example Usage Patterns
+**Execute Script with Arguments:**
+```
+shell("cd skills/SKILL_NAME && python scripts/SCRIPT_NAME.py arg1 arg2")
+```
+Passes command line arguments to skill scripts.
+
+**Check Script Requirements:**
+```
+shell("head -n 20 skills/SKILL_NAME/scripts/SCRIPT_NAME.py")
+```
+View script documentation and usage before execution.
+
+## Progressive Disclosure Strategy
+
+Follow this three-level approach for efficient skills usage:
+
+### Level 1: Discovery
+Start with broad exploration:
+```
+shell("ls skills/")
+```
+When you need to understand what capabilities are available.
+
+### Level 2: Investigation  
+Examine relevant skills:
+```
+shell("head -n 20 skills/RELEVANT_SKILL/SKILL.md")
+```
+When a skill seems relevant to the user's task.
+
+### Level 3: Deep Dive
+Load complete content and execute:
+```
+shell("cat skills/RELEVANT_SKILL/SKILL.md")
+shell("cd skills/RELEVANT_SKILL && python scripts/helper_script.py")
+```
+When you've determined the skill is definitely needed.
+
+## Best Practices
+
+### 1. **Efficient Discovery**
+- Use `shell("ls skills/")` when unsure what skills are available
+- Use `shell("grep -i KEYWORD skills/*/SKILL.md")` to find skills by topic
+- Read skill descriptions before loading full content
+
+### 2. **Progressive Loading**
+- Don't load all skills at once - be selective
+- Load skill content only when relevant to the user's specific task
+- Use `head` to preview files before loading completely
+
+### 3. **Script Usage**
+- Always execute scripts from their skill directory: `cd skills/SKILL_NAME && python scripts/...`
+- Check script documentation first: `head -n 20 skills/SKILL_NAME/scripts/SCRIPT.py`
+- Use scripts for deterministic operations like data processing or file analysis
+
+### 4. **Error Handling**
+- If a command fails, check the error message and try alternatives
+- Use `find` commands to verify file existence before accessing
+- Fall back to general capabilities if skill operations fail
+
+### 5. **Context Management**
+- Skills provide expert guidance - follow their instructions carefully
+- Combine skill knowledge with your general capabilities appropriately
+- Reference skill sources when explaining approaches to users
+
+## Common Usage Patterns
 
 ### Pattern 1: Task-Driven Skill Discovery
 ```
 User: "I need to extract data from a PDF form"
-1. Call list_available_skills() to see if you have PDF capabilities
-2. Call load_skill_content("pdf-processing") to get detailed instructions
-3. If needed, call load_skill_file("pdf-processing", "forms.md") for form-specific guidance
-4. Use execute_skill_script("pdf-processing", "extract_form_fields.py") if appropriate
+
+Agent workflow:
+1. shell("ls skills/") → see available skills
+2. shell("grep -i pdf skills/*/SKILL.md") → find PDF-related skills  
+3. shell("cat skills/pdf-processing/SKILL.md") → load PDF skill guidance
+4. shell("cat skills/pdf-processing/forms.md") → load form-specific instructions
+5. shell("cd skills/pdf-processing && python scripts/extract_form_fields.py input.pdf")
 ```
 
 ### Pattern 2: Capability Exploration
 ```
 User: "What can you help me with?"
-1. Call list_available_skills() to see your specialized capabilities
-2. Present the available skills to the user with brief descriptions
-3. When user shows interest, load relevant skill content for detailed capabilities
+
+Agent workflow:
+1. shell("ls skills/") → list available skill domains
+2. shell("head -n 5 skills/*/SKILL.md | grep description:") → get skill descriptions
+3. Present capabilities to user based on available skills
 ```
 
-### Pattern 3: Complex Task Execution
+### Pattern 3: Complex Multi-Step Tasks
 ```
 User: "Analyze this dataset and create visualizations"
-1. Call load_skill_content("data-analysis") for analysis guidance
-2. Follow skill instructions for data exploration and cleaning
-3. Use execute_skill_script("data-analysis", "data_quality_check.py") for automated checks
-4. Apply skill guidance for creating appropriate visualizations
+
+Agent workflow:
+1. shell("cat skills/data-analysis/SKILL.md") → load analysis methodology
+2. shell("cd skills/data-analysis && python scripts/data_quality_check.py dataset.csv") → automated checks
+3. Follow skill guidance for exploration and visualization
+4. Apply skill best practices for analysis workflow
 ```
+
+## Security and Safety
+
+The shell tool has built-in security constraints:
+- **Safe Commands**: Only `ls`, `cat`, `head`, `tail`, `find`, `grep`, `python`, etc.
+- **Dangerous Commands Blocked**: No `rm`, `mv`, `chmod`, `sudo`, etc.
+- **Directory Restrictions**: Commands execute in skills directory context
+- **Timeout Limits**: 30-second execution timeout for all commands
+- **Script Validation**: Python scripts must be within skills directories
 
 ## Important Guidelines
 
 ### When to Use Skills
-- **DO** use skills when the user's task matches a skill's description
+- **DO** use skills when the user's task matches a skill's domain
 - **DO** use skills for complex, specialized operations
 - **DO** use skill scripts for deterministic data processing
 - **DON'T** load skills for simple tasks you can handle directly
-- **DON'T** load multiple skills unless the task requires multiple domains
+- **DON'T** execute commands outside the skills directory
 
-### Skill Content Integration
-- Follow skill instructions as expert guidance
-- Combine skill knowledge with your general capabilities
-- Explain to users when you're using specialized skill knowledge
-- Credit skills when they provide the key approach or solution
+### Shell Command Best Practices
+- Always use relative paths within skills directory
+- Use `cd skills/SKILL_NAME && python scripts/...` for script execution
+- Combine commands efficiently: `shell("ls skills/ | grep pdf")`
+- Check file existence before operations: `shell("ls skills/SKILL_NAME/file.md")`
 
-### Progressive Disclosure
-- Load skills progressively (metadata → content → files → scripts)
-- Don't load all skill content upfront - be efficient
-- Load additional files only when skill content references them
-- Execute scripts only when skill instructions recommend them
-
-Remember: Skills are your specialized knowledge repositories. Use them wisely to provide expert-level assistance in specific domains while maintaining efficiency and clarity in your responses."""
+Remember: Skills are your specialized knowledge repositories accessed through familiar shell commands. Use them wisely to provide expert-level assistance while maintaining efficiency and security."""
 
     return prompt
 
 
-def get_skills_instruction_addition(skill_manager: SkillManager) -> str:
-    """Get a concise skills instruction to add to existing agent instructions.
-
-    This is a shorter version suitable for appending to existing agent instructions
-    rather than replacing them entirely.
+def get_shell_skills_instruction_addition(skills_directory: str | Path) -> str:
+    """Get a concise shell-based skills instruction to add to existing agent instructions.
 
     Args:
-      skill_manager: The skill manager containing loaded skills.
+      skills_directory: Path to the skills directory.
 
     Returns:
-      Concise skills instruction text.
+      Concise shell-based skills instruction text.
     """
-    skills_summary = skill_manager.get_skill_metadata_summary()
+    skills_dir = Path(skills_directory)
+    shell_tool = SkillsShellTool(skills_directory)
+    skills_context = shell_tool.get_skills_context()
 
     return f"""
 
-## Skills Available
+## Skills Available - Shell Access
 
-You have access to specialized skills through tools:
+{skills_context}
 
-{skills_summary}
-
-Use `list_available_skills()` to see details, `load_skill_content(skill_name)` to get expert guidance. Load skills progressively - only when relevant to the user's specific task."""
+Use `shell("ls skills/")` to discover skills, `shell("cat skills/SKILL_NAME/SKILL.md")` to load content, and `shell("cd skills/SKILL_NAME && python scripts/SCRIPT.py")` to execute scripts. Load skills progressively using standard shell commands."""

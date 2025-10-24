@@ -13,25 +13,23 @@
 # limitations under the License.
 
 from .skill import Skill
-from .skill_code_executor import SkillCodeExecutor
 from .skill_loader import SkillLoader
 from .skill_manager import SkillManager
 from .skill_system_prompt import (
-    generate_skills_system_prompt,
-    get_skills_instruction_addition,
+    generate_shell_skills_system_prompt,
+    get_shell_skills_instruction_addition,
 )
-from .skill_tools import create_skill_tools
 from .skills_plugin import SkillsPlugin
+from .skills_shell_tool import SkillsShellTool
 from .skills_toolset import SkillsToolset
 
 __all__ = [
     "Skill",
-    "SkillCodeExecutor",
     "SkillLoader",
     "SkillManager",
     "SkillsPlugin",
+    "SkillsShellTool",
     "SkillsToolset",
-    "create_skill_tools",
-    "generate_skills_system_prompt",
-    "get_skills_instruction_addition",
+    "generate_shell_skills_system_prompt",
+    "get_shell_skills_instruction_addition",
 ]

@@ -13,11 +13,9 @@
 # limitations under the License.
 
 """
-Example agent demonstrating Skills integration with ADK.
+Example agent demonstrating shell-based Skills integration with ADK.
 
-This agent shows both approaches:
-1. Using SkillsPlugin for global skills access
-2. Using SkillsToolset for per-agent skills access
+This agent shows both approaches using a single shell tool for all skills operations.
 """
 
 from pathlib import Path
@@ -32,18 +30,23 @@ SKILLS_DIR = Path(__file__).parent.parent / "skills"
 # Approach 1: Agent with SkillsToolset (per-agent skills)
 agent_with_toolset = Agent(
     model="gemini-2.0-flash",
-    name="skills_toolset_agent",
-    description="Agent that uses skills through the SkillsToolset",
+    name="skills_shell_agent",
+    description="Agent that uses skills through shell commands",
     instruction="""
-    You are a helpful assistant with access to specialized skills through tools.
+    You are a helpful assistant with access to specialized skills through shell commands.
     
-    Use the list_available_skills tool to see what skills are available.
-    Use load_skill_content to get the full content of a skill when relevant to the user's request.
-    Use load_skill_file to get additional context files when needed.
-    Use execute_skill_script to run skill scripts for deterministic operations.
+    Use the shell tool with standard commands:
+    - `ls skills/` to discover available skills
+    - `head -n 20 skills/SKILL_NAME/SKILL.md` to view skill descriptions
+    - `cat skills/SKILL_NAME/SKILL.md` to load full skill content when relevant
+    - `cat skills/SKILL_NAME/file.md` to load additional skill files
+    - `cd skills/SKILL_NAME && python scripts/script.py` to execute skill scripts
+    - `find skills/SKILL_NAME -type f` to list all files in a skill
     
-    Always check what skills are available first, then load the appropriate skill
-    content when the user asks for help with tasks that match a skill's description.
+    Always start with `ls skills/` to discover what skills are available, then
+    load appropriate skill content when users ask for help with matching tasks.
+    
+    Execute skill scripts for deterministic operations like data processing.
     """,
     tools=[SkillsToolset(skills_directory=SKILLS_DIR)],
 )
@@ -52,26 +55,25 @@ agent_with_toolset = Agent(
 agent_with_plugin = Agent(
     model="gemini-2.0-flash",
     name="skills_plugin_agent",
-    description="Agent that uses skills through the SkillsPlugin",
+    description="Agent that uses skills through the SkillsPlugin shell tool",
     instruction="""
     You are a helpful assistant with access to specialized skills.
     
-    Skills are automatically available to you through tools. When a user asks for help with
-    a task that matches one of your available skills, you can:
+    Skills are automatically available through shell commands. Use the shell tool
+    to interact with skills using standard commands like:
     
-    - Use list_available_skills() to see what skills are available
-    - Use load_skill_content(skill_name) to get the full skill content
-    - Use load_skill_file(skill_name, file_path) for additional context files
-    - Use execute_skill_script(skill_name, script_name) to run skill scripts
+    - `ls skills/` to see available skills
+    - `cat skills/SKILL_NAME/SKILL.md` to load skill content
+    - `cd skills/SKILL_NAME && python scripts/script.py` to run scripts
     
-    The available skills and their descriptions will be provided in your context.
-    Use the tools when relevant to help users with specialized tasks.
+    The shell tool provides secure access to the skills directory. Use standard
+    shell commands when relevant to help users with specialized tasks.
     """,
 )
 
 # Create app with SkillsPlugin
 app_with_plugin = App(
-    name="skills_plugin_demo",
+    name="skills_shell_demo",
     root_agent=agent_with_plugin,
     plugins=[SkillsPlugin(skills_directory=SKILLS_DIR)],
 )

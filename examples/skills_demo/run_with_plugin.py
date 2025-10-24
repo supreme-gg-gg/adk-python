@@ -9,7 +9,6 @@ from pathlib import Path
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
-# from agent import app_with_plugin
 from agent_with_system_prompt import app_with_full_prompt
 
 
@@ -27,11 +26,13 @@ async def main():
 
     print("Skills Plugin Demo")
     print("==================")
-    print("This agent has skills automatically available through the SkillsPlugin.")
+    print("This agent has skills available through shell commands.")
     print("Try asking about:")
     print("- PDF processing tasks")
     print("- Data analysis tasks")
     print("- 'What skills do you have available?'")
+    print("- 'List the available skills'")
+    print("- 'Show me the PDF processing skill'")
     print()
 
     while True:
@@ -40,7 +41,8 @@ async def main():
             if not user_input or user_input.lower() in ["quit", "exit"]:
                 break
 
-            print("\nAgent:", end=" ")
+            print(f"\nAgent ({user_input}):")
+            print("-" * 40)
 
             async for event in runner.run_async(
                 user_id="demo_user",
@@ -50,11 +52,29 @@ async def main():
                 ),
             ):
                 if event.content and event.content.parts:
-                    for part in event.content.parts:
+                    for i, part in enumerate(event.content.parts):
                         if part.text:
-                            print(part.text, end="")
+                            print(f"  Text: {part.text.strip()}")
+                        if part.function_call:
+                            print(
+                                f"  🔧 Function Call: {part.function_call.name}({part.function_call.args})"
+                            )
+                        if part.function_response:
+                            print(
+                                f"  📋 Function Response: {part.function_response.name}"
+                            )
+                            if part.function_response.response:
+                                response_text = part.function_response.response.get(
+                                    "result", str(part.function_response.response)
+                                )
+                                # Truncate long responses for readability
+                                if len(response_text) > 200:
+                                    response_text = (
+                                        response_text[:200] + "... [truncated]"
+                                    )
+                                print(f"      Result: {response_text}")
 
-            print("\n")
+            print("-" * 40)
 
         except KeyboardInterrupt:
             print("\nGoodbye!")

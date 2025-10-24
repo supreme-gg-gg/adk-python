@@ -25,7 +25,7 @@ async def test_agent(app, test_query: str, app_description: str):
         user_id="demo_user", app_name=app.name
     )
 
-    print("\nAgent Response:")
+    print(f"\nAgent Response ({test_query}):")
     print("-" * 40)
 
     response_text = ""
@@ -41,6 +41,12 @@ async def test_agent(app, test_query: str, app_description: str):
                 if part.text:
                     print(part.text, end="")
                     response_text += part.text
+                if part.function_call:
+                    print(
+                        f"\n🔧 Calling: {part.function_call.name}({part.function_call.args})"
+                    )
+                if part.function_response:
+                    print(f"\n📋 Tool Result: {part.function_response.name} completed")
 
     print("\n" + "-" * 40)
     await runner.close()

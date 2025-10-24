@@ -26,23 +26,20 @@ except ImportError:
 from ..agents.readonly_context import ReadonlyContext
 from ..tools.base_tool import BaseTool
 from ..tools.base_toolset import BaseToolset
-from ..tools.function_tool import FunctionTool
-from .skill_tools import create_skill_tools
+from .skills_shell_tool import SkillsShellTool
 
 logger = logging.getLogger("google_adk." + __name__)
 
 
 class SkillsToolset(BaseToolset):
-    """Toolset that provides Anthropic-style Skills functionality through tools.
+    """Toolset that provides shell-based Skills functionality.
 
-    This toolset implements skills as a set of tools that agents can call to:
-    1. Discover available skills
-    2. Load skill content progressively
-    3. Load specific skill files
-    4. Execute skill scripts
+    This toolset provides skills access through a single shell tool that agents
+    can use for all skills operations including discovery, content loading, and
+    script execution using standard shell commands.
 
-    This approach provides more granular control over skill access and integrates
-    naturally with ADK's existing tool system.
+    This approach is much simpler than multiple specialized tools and provides
+    more flexibility for skills operations.
     """
 
     def __init__(self, skills_directory: str | Path):
@@ -54,16 +51,16 @@ class SkillsToolset(BaseToolset):
         super().__init__()
         self.skills_directory = Path(skills_directory)
 
-        # Create skill tools
-        self.skill_functions = create_skill_tools(skills_directory)
+        # Create shell tool for skills operations
+        self.shell_tool = SkillsShellTool(skills_directory)
 
     @override
     async def get_tools(
         self, readonly_context: Optional[ReadonlyContext] = None
     ) -> List[BaseTool]:
-        """Get all skill-related tools.
+        """Get the shell tool for skills operations.
 
         Returns:
-          List of skill management tools.
+          List containing the skills shell tool.
         """
-        return [FunctionTool(func=func) for func in self.skill_functions]
+        return [self.shell_tool]
