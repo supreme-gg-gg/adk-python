@@ -13,8 +13,6 @@
 # limitations under the License.
 
 from .skill import Skill
-from .skill_loader import SkillLoader
-from .skill_manager import SkillManager
 from .skill_system_prompt import (
     generate_shell_skills_system_prompt,
     get_shell_skills_instruction_addition,
@@ -25,8 +23,6 @@ from .skills_toolset import SkillsToolset
 
 __all__ = [
     "Skill",
-    "SkillLoader",
-    "SkillManager",
     "SkillsPlugin",
     "SkillsShellTool",
     "SkillsToolset",

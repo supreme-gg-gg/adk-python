@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 from google.genai import types
+import yaml
 
 from ..agents.base_agent import BaseAgent
 from ..agents.callback_context import CallbackContext
@@ -29,15 +30,12 @@ logger = logging.getLogger("google_adk." + __name__)
 
 
 class SkillsPlugin(BasePlugin):
-    """Plugin that provides Anthropic-style Skills functionality via shell tool.
+    """Plugin that provides shell-based Skills functionality.
 
     This plugin provides global skills access by:
-    1. Adding a shell tool for skills operations to all LLM agents
-    2. Injecting skills context into agent instructions
-    3. Enabling shell-based progressive disclosure of skills
-
-    The plugin uses a single shell tool instead of multiple specialized tools,
-    making the system simpler and more flexible.
+    1. Adding a shell tool for skills operations to all LLM agents.
+    2. Injecting a "Level 1" discovery prompt (names and descriptions of
+       available skills) into the agent's instructions.
     """
 
     def __init__(self, skills_directory: str | Path, name: str = "skills_plugin"):
@@ -49,87 +47,76 @@ class SkillsPlugin(BasePlugin):
         """
         super().__init__(name)
         self.skills_directory = Path(skills_directory)
-
-        # Create shell tool for skills operations
         self.shell_tool = SkillsShellTool(skills_directory)
+        self._skill_metadata = self._parse_skill_metadata()
+
+    def _parse_skill_metadata(self) -> List[Dict[str, str]]:
+        """Parse the YAML frontmatter of all SKILL.md files."""
+        metadata_list = []
+        if not self.skills_directory.exists():
+            logger.warning(f"Skills directory not found: {self.skills_directory}")
+            return metadata_list
+
+        for skill_dir in self.skills_directory.iterdir():
+            skill_file = skill_dir / "SKILL.md"
+            if not (skill_dir.is_dir() and skill_file.exists()):
+                continue
+
+            try:
+                with open(skill_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                if not content.startswith("---"):
+                    continue
+
+                parts = content.split("---", 2)
+                if len(parts) < 3:
+                    continue
+
+                metadata = yaml.safe_load(parts[1])
+                if isinstance(metadata, dict) and "name" in metadata and "description" in metadata:
+                    metadata_list.append({
+                        "name": metadata["name"],
+                        "description": metadata["description"]
+                    })
+            except Exception as e:
+                logger.error(f"Failed to parse metadata for skill in {skill_dir}: {e}")
+        return metadata_list
 
     async def before_agent_callback(
         self, *, agent: BaseAgent, callback_context: CallbackContext
     ) -> Optional[types.Content]:
-        """Add shell tool and skills context to agents.
-
-        This provides skills functionality by:
-        1. Adding shell tool for skills operations
-        2. Enhancing agent instructions with skills context and usage guidance
-        """
-        # Only work with LLM agents
+        """Add shell tool and skills context to agents."""
         from ..agents.llm_agent import LlmAgent
-
         if not isinstance(agent, LlmAgent):
             return None
 
-        # Add shell tool if not already present
-        tool_names = set()
-        for tool_union in agent.tools:
-            if hasattr(tool_union, "name"):
-                tool_names.add(tool_union.name)
-            elif callable(tool_union) and hasattr(tool_union, "__name__"):
-                tool_names.add(tool_union.__name__)
+        # 1. Add shell tool if not already present
+        if "shell" not in {getattr(t, "name", None) for t in agent.tools}:
+             agent.tools.append(self.shell_tool)
+             logger.debug(f"Added shell tool to agent: {agent.name}")
 
-        if "shell" not in tool_names:
-            agent.tools.append(self.shell_tool)
-            logger.debug(f"Added shell tool to agent: {agent.name}")
-
-        # Add skills context to agent instruction
+        # 2. Add skills context to agent instruction
         if hasattr(agent, "instruction") and isinstance(agent.instruction, str):
-            if "Skills available in:" not in agent.instruction:
+            if "## Available Skills" not in agent.instruction:
                 skills_context = self._generate_skills_instruction()
                 agent.instruction += skills_context
-                logger.debug(
-                    f"Enhanced agent instruction with skills context: {agent.name}"
-                )
+                logger.debug(f"Enhanced agent instruction for agent: {agent.name}")
 
-        # Add skills availability to callback context state
         callback_context.state["skills_available"] = True
-        callback_context.state["skills_directory"] = str(self.skills_directory)
-
         return None
 
     def _generate_skills_instruction(self) -> str:
-        """Generate skills instruction for agent enhancement."""
-        skills_context = self.shell_tool.get_skills_context()
+        """Generate the concise 'Level 1' skills instruction."""
+        if not self._skill_metadata:
+            return ""
 
-        return f"""
+        lines = ["## Available Skills",
+                 "You have access to the following specialized skills. Use the `shell` tool to interact with them.",
+                 "---"]
+        for metadata in self._skill_metadata:
+            lines.append(f"- **{metadata['name']}**: {metadata['description']}")
+        lines.append("---")
+        lines.append("To use a skill, read its instructions with `shell(\"cat skills/<skill-name>/SKILL.md\")`.")
 
-## Skills System - Shell Access
-
-{skills_context}
-
-### Shell Commands for Skills
-
-Use the shell tool with these commands:
-
-**Discovery:**
-- `ls skills/` - List all available skills
-- `head -n 20 skills/SKILL_NAME/SKILL.md` - View skill metadata and description
-
-**Loading Content:**
-- `cat skills/SKILL_NAME/SKILL.md` - Load complete skill content
-- `cat skills/SKILL_NAME/reference.md` - Load additional skill files
-
-**Script Execution:**
-- `cd skills/SKILL_NAME && python scripts/SCRIPT_NAME.py` - Execute skill scripts
-- `find skills/SKILL_NAME -name "*.py"` - List available scripts
-
-**File Operations:**
-- `find skills/SKILL_NAME -type f` - List all files in a skill
-- `ls -la skills/SKILL_NAME/` - Detailed file listing
-
-### Usage Pattern
-
-1. **Discover**: `shell("ls skills/")` to see available skills
-2. **Investigate**: `shell("head -n 20 skills/SKILL_NAME/SKILL.md")` to read descriptions  
-3. **Load**: `shell("cat skills/SKILL_NAME/SKILL.md")` when skill is relevant to user's task
-4. **Execute**: `shell("cd skills/SKILL_NAME && python scripts/SCRIPT.py")` for automation
-
-Always start with skill discovery and load content progressively as needed."""
+        return "\n".join(lines)
