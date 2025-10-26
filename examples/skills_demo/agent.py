@@ -13,70 +13,41 @@
 # limitations under the License.
 
 """
-Example agent demonstrating shell-based Skills integration with ADK.
+Example agent demonstrating the recommended Skills integration with ADK.
 
-This agent shows both approaches using a single shell tool for all skills operations.
+This agent uses the `SkillsPlugin` to automatically gain access to the shell
+and is configured with a comprehensive system prompt for optimal performance.
 """
 
 from pathlib import Path
 
 from google.adk import Agent
 from google.adk.apps.app import App
-from google.adk.skills import SkillsPlugin, SkillsToolset
+from google.adk.skills import SkillsPlugin, generate_shell_skills_system_prompt
 
-# Get the path to the skills directory
+# Define the path to the skills directory, relative to this file.
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
-# Approach 1: Agent with SkillsToolset (per-agent skills)
-agent_with_toolset = Agent(
-    model="gemini-2.0-flash",
-    name="skills_shell_agent",
-    description="Agent that uses skills through shell commands",
-    instruction="""
-    You are a helpful assistant with access to specialized skills through shell commands.
-    
-    Use the shell tool with standard commands:
-    - `ls skills/` to discover available skills
-    - `head -n 20 skills/SKILL_NAME/SKILL.md` to view skill descriptions
-    - `cat skills/SKILL_NAME/SKILL.md` to load full skill content when relevant
-    - `cat skills/SKILL_NAME/file.md` to load additional skill files
-    - `cd skills/SKILL_NAME && python scripts/script.py` to execute skill scripts
-    - `find skills/SKILL_NAME -type f` to list all files in a skill
-    
-    Always start with `ls skills/` to discover what skills are available, then
-    load appropriate skill content when users ask for help with matching tasks.
-    
-    Execute skill scripts for deterministic operations like data processing.
-    """,
-    tools=[SkillsToolset(skills_directory=SKILLS_DIR)],
+# 1. Define the Agent
+# The best practice is to provide a comprehensive system prompt that teaches
+# the agent how to use the skills correctly.
+agent = Agent(
+    model="gemini-2.5-flash",
+    name="skills_expert_agent",
+    description="An agent that uses a sandboxed shell to interact with a library of skills.",
+    instruction=generate_shell_skills_system_prompt(SKILLS_DIR),
 )
 
-# Approach 2: Agent for use with SkillsPlugin (global skills)
-agent_with_plugin = Agent(
-    model="gemini-2.0-flash",
-    name="skills_plugin_agent",
-    description="Agent that uses skills through the SkillsPlugin shell tool",
-    instruction="""
-    You are a helpful assistant with access to specialized skills.
-    
-    Skills are automatically available through shell commands. Use the shell tool
-    to interact with skills using standard commands like:
-    
-    - `ls skills/` to see available skills
-    - `cat skills/SKILL_NAME/SKILL.md` to load skill content
-    - `cd skills/SKILL_NAME && python scripts/script.py` to run scripts
-    
-    The shell tool provides secure access to the skills directory. Use standard
-    shell commands when relevant to help users with specialized tasks.
-    """,
-)
-
-# Create app with SkillsPlugin
-app_with_plugin = App(
-    name="skills_shell_demo",
-    root_agent=agent_with_plugin,
+# 2. Define the App
+# The `SkillsPlugin` is the simplest and recommended way to enable skills.
+# It automatically injects the `SkillsShellTool` and the "Level 1" discovery
+# prompt (list of available skills) into the agent's instructions.
+app = App(
+    name="skills_demo_app",
+    root_agent=agent,
     plugins=[SkillsPlugin(skills_directory=SKILLS_DIR)],
 )
 
-# Export the main agent (toolset approach) for CLI usage
-root_agent = agent_with_toolset
+# 3. Export the app for the runner.
+# The `adk run` command will automatically discover and use this `root_agent`.
+root_agent = agent
