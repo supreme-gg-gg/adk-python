@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Set, Union
 from google.genai import types
 
 from ..tools.base_tool import BaseTool
+from ..tools.staging_area import get_session_staging_path
 from ..tools.tool_context import ToolContext
 
 logger = logging.getLogger("google_adk." + __name__)
@@ -115,7 +116,7 @@ class SkillsShellTool(BaseTool):
 
         try:
             parsed_commands = self._parse_and_validate_command(command)
-            result = await self._execute_command_safely(parsed_commands)
+            result = await self._execute_command_safely(parsed_commands, tool_context)
             logger.info(f"Executed shell command: {command}")
             return result
         except Exception as e:
@@ -154,22 +155,24 @@ class SkillsShellTool(BaseTool):
             if ".." in arg:
                 return "Directory traversal using '..' is not allowed."
 
-            # Further validation to ensure paths are within the skills directory
             if arg.startswith("/"):
                 return "Absolute paths are not allowed."
 
         return None
 
-    async def _execute_command_safely(self, parsed_commands: List[List[str]]) -> str:
-        # This method uses os.chdir, which can have side effects in concurrent environments.
-        # For this implementation, we accept the risk for simplicity, but a more robust
-        # solution might involve managing subprocess CWD without global state changes.
+    async def _execute_command_safely(
+        self, parsed_commands: List[List[str]], tool_context: ToolContext
+    ) -> str:
+        staging_root = get_session_staging_path(
+            session_id=tool_context.session.id,
+            app_name=tool_context._invocation_context.app_name,
+            skills_directory=self.skills_directory,
+        )
         original_cwd = os.getcwd()
         output_parts = []
-        current_cwd = self.skills_directory
 
         try:
-            os.chdir(current_cwd)
+            os.chdir(staging_root)
 
             for i, command_parts in enumerate(parsed_commands):
                 if i > 0:
@@ -177,19 +180,17 @@ class SkillsShellTool(BaseTool):
 
                 if command_parts[0] == "cd":
                     if len(command_parts) > 1:
-                        new_dir = (current_cwd / command_parts[1]).resolve()
-                        # Security check: ensure new_dir is within skills_directory
+                        new_dir = (Path(os.getcwd()) / command_parts[1]).resolve()
                         if (
-                            self.skills_directory not in new_dir.parents
-                            and new_dir != self.skills_directory
+                            staging_root not in new_dir.parents
+                            and new_dir != staging_root
                         ):
                             raise ValueError(
-                                "Cannot cd outside of the skills directory."
+                                "Cannot cd outside of the sandboxed directory."
                             )
-                        current_cwd = new_dir
-                        os.chdir(current_cwd)
+                        os.chdir(new_dir)
                         output_parts.append(
-                            f"Changed directory to {current_cwd.relative_to(self.skills_directory)}"
+                            f"Changed directory to {new_dir.relative_to(staging_root)}"
                         )
                     continue
 
@@ -198,7 +199,7 @@ class SkillsShellTool(BaseTool):
                     capture_output=True,
                     text=True,
                     timeout=30,
-                    cwd=current_cwd,
+                    cwd=os.getcwd(),
                 )
 
                 if result.returncode != 0:

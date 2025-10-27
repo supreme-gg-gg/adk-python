@@ -11,24 +11,28 @@ This skill provides comprehensive data analysis capabilities using Python's data
 ## Core Capabilities
 
 ### Data Loading and Cleaning
+
 - Load data from various formats (CSV, JSON, Excel, databases)
 - Handle missing values and data type conversions
 - Detect and remove duplicates
 - Data validation and quality checks
 
 ### Exploratory Data Analysis
+
 - Generate descriptive statistics
 - Create data distributions and histograms
 - Correlation analysis
 - Outlier detection
 
 ### Data Visualization
+
 - Create plots with matplotlib and seaborn
 - Interactive visualizations with plotly
 - Statistical plots (box plots, scatter plots, heatmaps)
 - Time series visualizations
 
 ### Statistical Analysis
+
 - Hypothesis testing
 - Regression analysis
 - Classification and clustering
@@ -40,9 +44,14 @@ This skill provides comprehensive data analysis capabilities using Python's data
 pip install pandas numpy matplotlib seaborn scipy scikit-learn plotly
 ```
 
+## Using Scripts
+
+You can directly use the provided script in `scripts/data_quality_check.py` to perform common data analysis tasks. You should read the file before using it using shell to make sure it is relevant to the task. You can run it by `shell("python scripts/data_quality_check.py input.csv [output_report.txt]")`.
+
 ## Quick Start Examples
 
 ### Load and Explore Data
+
 ```python
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -60,6 +69,7 @@ print(df.isnull().sum())
 ```
 
 ### Create Visualizations
+
 ```python
 # Distribution plot
 plt.figure(figsize=(10, 6))
@@ -75,6 +85,7 @@ plt.show()
 ```
 
 ### Statistical Analysis
+
 ```python
 from scipy import stats
 

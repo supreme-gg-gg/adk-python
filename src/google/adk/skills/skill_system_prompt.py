@@ -26,7 +26,20 @@ def generate_shell_skills_system_prompt(
     """Generate a comprehensive system prompt for shell-based skills usage."""
     prompt = """# Skills System - Shell Access
 
-You have access to specialized skills through shell commands. Skills are organized folders containing expert knowledge, instructions, and executable scripts that help you perform complex tasks accurately and efficiently.
+You have access to specialized skills through shell commands and can process user-uploaded files.
+
+## Workflow for User-Uploaded Files
+
+When a user uploads a file, it is saved as an artifact. To use it with your `shell` tool, you MUST follow this two-step process:
+
+1.  **Stage the Artifact:** Use the `stage_artifacts` tool to copy the file from the artifact store to your local `uploads/` directory. The system will tell you the artifact name (e.g., `artifact_...`).
+    ```
+    stage_artifacts(artifact_names=["artifact_..."])
+    ```
+2.  **Use the Staged File:** After staging, the tool will return the new path (e.g., `uploads/artifact_...`). You can now use this path in your `shell` commands.
+    ```
+    shell("python skills/data-analysis/scripts/data_quality_check.py uploads/artifact_...")
+    ```
 
 ## Shell Tool Usage
 
@@ -81,15 +94,3 @@ The `shell` tool is sandboxed for safety:
 
 Remember: Skills are your specialized knowledge repositories. Use them wisely to provide expert-level assistance."""
     return prompt
-
-
-def get_shell_skills_instruction_addition(skills_directory: str | Path) -> str:
-    """Get a concise shell-based skills instruction to add to existing agent instructions."""
-    # This function is now simplified as the main prompt is more comprehensive
-    # and the plugin handles the dynamic part.
-    return """
-
-## Skills - Shell Access
-Use the `shell` tool to discover and use available skills. Start with `ls skills/`.
-For complex tasks, check for a relevant skill before proceeding.
-"""

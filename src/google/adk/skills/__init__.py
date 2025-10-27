@@ -15,7 +15,6 @@
 from .skill import Skill
 from .skill_system_prompt import (
     generate_shell_skills_system_prompt,
-    get_shell_skills_instruction_addition,
 )
 from .skills_plugin import SkillsPlugin
 from .skills_shell_tool import SkillsShellTool
@@ -27,5 +26,4 @@ __all__ = [
     "SkillsShellTool",
     "SkillsToolset",
     "generate_shell_skills_system_prompt",
-    "get_shell_skills_instruction_addition",
 ]

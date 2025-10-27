@@ -24,6 +24,10 @@ from google.genai import types
 
 from agent import app
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 async def main():
     """Run an interactive chat session with the skills agent."""
@@ -71,9 +75,7 @@ async def main():
 
                 # Read the file content as bytes and create the Part.
                 file_bytes = file_path.read_bytes()
-                file_part = types.Part.from_bytes(
-                    data=file_bytes, mime_type=mime_type
-                )
+                file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
                 message_parts.append(file_part)
 
             print("Agent:")
