@@ -14,8 +14,9 @@ This demo uses a simple and powerful shell-based architecture:
 
 The agent has access to the skills defined in `examples/skills/`:
 
--   **`pdf-processing`**: For extracting text from PDFs, merging documents, etc.
--   **`data-analysis`**: For running data quality checks and other analysis.
+- **`pdf-processing`**: For extracting text from PDFs, merging documents, etc.
+- **`data-analysis`**: For running data quality checks and other analysis.
+- **`analyzing-financial-statements`**: For calculating key financial ratios from financial statements. this is sourced from Claude's [skills cookbook](https://github.com/anthropics/claude-cookbooks/tree/main/skills)
 
 ## How to Run the Demo
 
@@ -29,6 +30,8 @@ You can then have an interactive chat session with the agent.
 
 ### Example Questions
 
--   "What skills do you have?"
--   "I need to analyze a CSV file, what should I do first?"
--   "How can I extract text from a PDF document?"
+- "What skills do you have?"
+- "I need to analyze a CSV file, what should I do first?"
+- "How can I extract text from a PDF document?"
+- "Can you help me analyze financial statements?" + attach relevant financial data files.
+- "Perform data quality checks on this dataset." + attach a CSV file.
